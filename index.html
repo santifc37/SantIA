@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ruleta de Perks</title>
+  <!-- Fuente Montserrat con pesos altos -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Pantalla de carga fullscreen -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-box">
+      <div class="loading-text">⏳ Cargando imagenes...</div>
+      <div class="loading-bar-track">
+        <div class="loading-bar-fill" id="loadingBarFill"></div>
+      </div>
+      <div class="loading-percent" id="loadingPercent">0%</div>
+    </div>
+  </div>
+
+  <div id="perkTooltip"></div>
+
+  <!-- Modal de confirmación de eliminación -->
+  <div class="modal-overlay" id="removeModalOverlay">
+    <div class="modal-content">
+      <h3 id="removeModalText">¿Seguro que quieres quitar esta opción de la ruleta?</h3>
+      <div class="modal-buttons">
+        <button class="modal-btn cancel" id="removeModalCancelBtn">Cancelar</button>
+        <button class="modal-btn confirm" id="removeModalConfirmBtn" style="background:#d93838;">Quitar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Primera pantalla: visible sin scroll, diseñada a 1920x1020 (OBS).
+       stageOuter/stageScaler escalan este bloque para que se vea siempre
+       exactamente igual, sin recortes ni deformación, sea cual sea el
+       tamaño real de la ventana o de la fuente de navegador en OBS. -->
+  <div id="stageOuter">
+   <div id="stageScaler">
+    <div class="stage">
+      
+      <div class="wheel-section">
+        <h1></h1>
+        <div class="wheel-wrap">
+          <div class="pointer" id="pointer"></div>
+          <canvas id="wheel"></canvas>
+
+          <!-- Canvas estático para luces y profundidad -->
+          <canvas id="overlayCanvas"></canvas>
+
+          <div class="center-diamond-wrapper">
+            <div class="center-diamond">
+              <img id="diamondImg" class="center-diamond-img" src="" alt="Perk">
+            </div>
+          </div>
+
+          <!-- Imagen misterio: se muestra sobre el rombo mientras está el "CLICK PARA GIRAR" -->
+          <img id="mysteryDiamondImg" class="mystery-diamond-img" src="source/misterio.webp" alt="Misterio">
+
+          <!-- Fondo oscuro del modo espera -->
+          <div class="wheel-dark-overlay" id="wheelDarkOverlay"></div>
+
+          <!-- Imagen de Click to Spin -->
+          <div class="spin-hint" aria-hidden="true">
+            <img src="source/clicktospin.png" alt="Girar ruleta" class="spin-hint-img">
+          </div>
+
+          <!-- Pantalla ganadora dentro de la ruleta -->
+          <div class="winner-overlay" id="winnerOverlay">
+            <div class="winner-banner">
+              <div class="winner-img-wrap">
+                <img id="winnerImg" src="" alt="Ganador">
+              </div>
+              <div class="winner-text" id="winnerText"></div>
+            </div>
+          </div>
+          
+          <video id="ruletaFxVideo" class="wheel-fx-video" src="source/ruleta.webm" muted playsinline></video>
+
+        </div>
+      </div>
+
+      <!-- Panel de donaciones / perks añadidas fuera de wheel-section -->
+      <div class="donations-container">
+        <div class="header-status">
+          <h3>PERKS AÑADIDAS</h3>
+          <div class="status-badge" id="statusBadge" title="Verificando conexión...">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">Conectando...</span>
+          </div>
+        </div>
+
+        <!-- Ventana fija: si la lista no entra completa, se desplaza sola -->
+        <div class="donations-scroll" id="donationsScroll">
+          <ul id="donationsList">
+            <li class="empty">SIN PERKS AÑADIDAS...</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+   </div>
+  </div>
+  <!-- Fin de la primera pantalla -->
+
+  <!-- Segunda pantalla: panel de administración -->
+  <div class="admin-section">
+    <div class="container">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Opciones Predeterminados</h2>
+        </div>
+        <div class="search-box">
+          <input type="text" id="searchInput" placeholder="🔍 Buscar opción...">
+        </div>
+        <div class="db-grid" id="dbList"></div>
+
+        <div class="pagination-controls">
+          <button class="page-btn" id="prevPageBtn">⬅️ Anterior</button>
+          <span class="page-info" id="pageInfo">Página 1 de 1</span>
+          <button class="page-btn" id="nextPageBtn">Siguiente ➡️</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
+  <script type="module" src="script.js"></script>
+  <script defer src="/_vercel/insights/script.js"></script>
+</body>
+</html>
