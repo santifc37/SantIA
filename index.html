@@ -6,7 +6,7 @@
   <title>Ruleta de Perks</title>
   <!-- Fuente Montserrat con pesos altos -->
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
@@ -126,9 +126,38 @@
       </div>
     </div>
   </div>
+
+ <div id="admin-panel" class="admin-panel">
+  <button id="btn-toggle-panel" class="admin-toggle-btn" type="button">
+    ⚙️ Panel de Administración
+    <span class="arrow">▼</span>
+  </button>
+
+  <div id="admin-submenu" class="admin-submenu">
+    <div class="submenu-item">
+      <label>Contraseña maestra</label>
+      <input type="password" id="admin-pass" placeholder="Contraseña maestra" />
+    </div>
+    <div class="submenu-item">
+      <label>Nueva Key de Streamlabs</label>
+      <input type="text" id="new-streamlabs-key" placeholder="Nueva Key de Streamlabs" />
+    </div>
+    <button id="btn-save-key" type="button">Actualizar Key</button>
+  </div>
+</div>
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
-  <script type="module" src="script.js"></script>
+  <!-- Al final de tu <body> -->
+  <script type="module" src="./scripts/main.js"></script>
   <script defer src="/_vercel/insights/script.js"></script>
+  <script>
+  const toggleBtn = document.getElementById('btn-toggle-panel');
+  const submenu = document.getElementById('admin-submenu');
+
+  toggleBtn.addEventListener('click', function () {
+    submenu.classList.toggle('open');
+    toggleBtn.classList.toggle('active');
+  });
+</script>
 </body>
 </html>

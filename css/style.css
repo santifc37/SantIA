@@ -304,7 +304,7 @@ h1:empty {
 .winner-banner {
   width: 100%;
   height: 100%;
-  background: url('source/ruletawein.png') center / cover no-repeat;
+  background: url('../source/ruletawein.png') center / cover no-repeat;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -831,4 +831,86 @@ h1:empty {
   font-family: monospace; 
   font-size: 1.3rem;
   font-weight: 800;
+}
+
+.admin-panel {
+  margin-top: 50px;
+  max-width: 320px;
+  font-family: sans-serif;
+}
+
+.admin-toggle-btn {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #2a2a2a;
+  color: #fff;
+  border: 1px solid #444;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-toggle-btn:hover {
+  background: #3a3a3a;
+}
+
+.arrow {
+  transition: transform 0.2s ease;
+}
+
+.admin-toggle-btn.active .arrow {
+  transform: rotate(180deg);
+}
+
+.admin-submenu {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 16px;
+  background: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 8px;
+}
+
+.admin-submenu.open {
+  display: flex;
+}
+
+.submenu-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.submenu-item label {
+  font-size: 12px;
+  color: #aaa;
+}
+
+.admin-submenu input {
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #555;
+  background: #111;
+  color: #fff;
+  font-size: 14px;
+}
+
+.admin-submenu button {
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  background: #444;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.admin-submenu button:hover {
+  background: #555;
 }

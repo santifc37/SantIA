@@ -6,9 +6,6 @@ export default async function handler(req, res) {
       'Content-Type': 'application/json'
     };
 
-    // Como existe la foreign key id_perk -> perksespeciales.id,
-    // PostgREST puede resolver el join directamente en una sola query
-    // usando "recursos embebidos" (embedded resources).
     const resPerks = await fetch(
       `${process.env.SUPABASE_URL}/rest/v1/perksanadidas?select=id,nombre,expires_at,perksespeciales(nombre,image)`,
       { headers }
