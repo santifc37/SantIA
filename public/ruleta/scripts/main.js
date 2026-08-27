@@ -1,10 +1,12 @@
 import { state, CUSTOM_PERK_ICON } from './config.js';
 import { fetchPerks, fetchDonacionesEspeciales } from './api.js';
+// Cambiado de '../../scripts/' a './' porque están en la misma carpeta scripts/
 import { mezclarSinAdyacentesIguales } from './utils.js';
 import { dibujarRuleta, dibujarOverlayEstatico, actualizarEstadoRuleta, iniciarGiroEnEspera, setupWheelEventListeners } from './wheel.js';
 import { renderizarListaOpciones, precargarImagenes, ocultarPantallaCarga, setupUIEventListeners, actualizarAutoScrollDonaciones, iniciarTimersEnVivo } from './ui.js';
 import { iniciarKeepAliveRender } from './streamlabs.js';
 import { iniciarEscuchaPerks } from './realtime.js';
+
 // 1. Escalar el escenario para resoluciones dinámicas
 (function initStageScaler() {
   const DESIGN_W = 1920;
@@ -45,7 +47,6 @@ async function inicializarPerks() {
     ocultarPantallaCarga();
   }
 }
-
 
 
 // 3. Cargar Donaciones (API + UI)
@@ -99,35 +100,67 @@ async function inicializarDonaciones() {
   }
 }
 
-// 4. Arranque Global
-document.addEventListener("DOMContentLoaded", async () => {
-  // Inicializar listeners y UI visual
-  iniciarKeepAliveRender(5000);
-  setupUIEventListeners();
-  setupWheelEventListeners();
-  dibujarRuleta();
-  dibujarOverlayEstatico();
-  iniciarGiroEnEspera();
+// URL de tu backend en Render
+const RENDER_URL = 'https://server-render-ruleta.onrender.com/api/verificar';
 
-  // Efecto Video
-  const fxVideo = document.getElementById("ruletaFxVideo");
-  if (fxVideo) {
-    const dispararEfecto = () => { fxVideo.currentTime = 0; fxVideo.play().catch(()=>{}); };
-    dispararEfecto();
-    setInterval(dispararEfecto, 5000);
+function obtenerCookie(nombre) {
+  const nameEQ = nombre + "=";
+  const ca = document.cookie.split(';');
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i].trim();
+    if (c.indexOf(nameEQ) === 0) {
+      let val = c.substring(nameEQ.length, c.length);
+      return val.replace(/^"|"$/g, '');
+    }
+  }
+  return null;
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  const token = obtenerCookie('token_sesion');
+
+  if (!token) {
+    window.location.replace('/');
+    return;
   }
 
-  // Recalculo scroll en Resize
-  window.addEventListener('resize', () => {
-    clearTimeout(window.donationsResizeTimeout);
-    window.donationsResizeTimeout = setTimeout(actualizarAutoScrollDonaciones, 200);
-  });
+  try {
+    // Petición directa a Render para comprobar la cookie contra process.env.Papita_Papital
+    const res = await fetch(`${RENDER_URL}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: decodeURIComponent(token) })
+    });
 
-  // Fetch e Inicio Asíncrono
-  await inicializarPerks();
-  await inicializarDonaciones();
+    const data = await res.json();
 
-  iniciarEscuchaPerks(() => {
-  inicializarDonaciones();
-});
+    if (!res.ok || !data.valido) {
+      window.location.replace('/');
+      return;
+    }
+  } catch (error) {
+    console.error('Error al verificar la sesión contra Render:', error);
+    window.location.replace('/');
+    return;
+  }
+
+  // --- Inicialización normal de la ruleta ---
+  try {
+    iniciarKeepAliveRender(300000);
+
+    setupUIEventListeners();
+    setupWheelEventListeners();
+    dibujarRuleta();
+    dibujarOverlayEstatico();
+    iniciarGiroEnEspera();
+
+    await inicializarPerks();
+    await inicializarDonaciones();
+
+    iniciarEscuchaPerks(() => {
+      inicializarDonaciones();
+    });
+  } catch (error) {
+    console.error('Error al inicializar la app:', error);
+  }
 });

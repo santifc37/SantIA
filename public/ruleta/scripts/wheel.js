@@ -24,10 +24,6 @@ const winnerImg = document.getElementById('winnerImg');
 const winnerText = document.getElementById('winnerText');
 
 function reproducirTick() {
-  // Mismo mecanismo que wheeldecide.com: 3 canales de audio, se usa el
-  // primero que ya terminó de sonar; si los 3 están ocupados, se omite
-  // este tick en vez de cortar uno que sigue sonando. El timing (cada
-  // cuánto se permite llamar a esta función) ya lo decide quien la llama.
   const canal = audios.ticks.find((a) => a.paused || a.ended);
   if (!canal) return;
 
@@ -144,9 +140,8 @@ function actualizarRomboSegunRotacion(rotationDeg, spinTimeActual = null) {
 
   // Piso mínimo UNIVERSAL entre dos ticks, sin importar si lo disparó el
   // modo constante o el sincronizado. Sin esto, justo en el instante de la
-  // transición puede sonar un tick del modo constante (por su reloj propio
-  // de MIN_TICK_GAP_MS) y, casi enseguida, otro del modo sincronizado (por
-  // el cambio de opción real) — quedan pegados y suenan como doble.
+  // transición puede sonar un tick del modo constante y, casi enseguida,
+  // otro del modo sincronizado — quedan pegados y suenan como doble.
   const intentarTick = () => {
     if (spinTimeActual - state.ultimoTickSpinTime < MIN_TICK_GAP_MS) return;
     reproducirTick();
@@ -159,12 +154,21 @@ function actualizarRomboSegunRotacion(rotationDeg, spinTimeActual = null) {
       const gap = spinTimeActual - state.ultimoCambioSpinTime;
       state.ultimoCambioSpinTime = spinTimeActual;
 
-      // La rueda solo frena durante un giro, nunca acelera, así que este
-      // cambio de modo es de una sola vía: una vez que tarda
-      // UMBRAL_CAMBIO_MODO_MS o más en cambiar de opción, se queda en modo
-      // sincronizado por el resto del giro.
-      if (state.modoConstante && gap >= UMBRAL_CAMBIO_MODO_MS) {
-        state.modoConstante = false;
+      if (state.modoConstante) {
+        // El intervalo del modo constante sube gradualmente (86, 87, 88...)
+        // siguiendo el gap real entre cambios de opción, en vez de quedar
+        // fijo en MIN_TICK_GAP_MS todo el tiempo. Así, cuando finalmente
+        // toca el umbral y pasa a modo sincronizado, no hay salto brusco:
+        // ya estaba sonando casi al mismo ritmo que el real.
+        state.intervaloActual = Math.min(UMBRAL_CAMBIO_MODO_MS, Math.max(MIN_TICK_GAP_MS, gap));
+
+        // La rueda solo frena durante un giro, nunca acelera, así que este
+        // cambio de modo es de una sola vía: una vez que tarda
+        // UMBRAL_CAMBIO_MODO_MS o más en cambiar de opción, se queda en
+        // modo sincronizado por el resto del giro.
+        if (gap >= UMBRAL_CAMBIO_MODO_MS) {
+          state.modoConstante = false;
+        }
       }
 
       // Modo sincronizado: el tick suena justo en el cambio de opción.
@@ -175,9 +179,10 @@ function actualizarRomboSegunRotacion(rotationDeg, spinTimeActual = null) {
     state.lastSoundOptionName = opt.name;
   }
 
-  // Modo constante: el tick suena a un ritmo parejo (cada MIN_TICK_GAP_MS),
-  // sin importar si cambió la opción en este paso o no.
-  if (activo && state.modoConstante) {
+  // Modo constante: el tick suena cada state.intervaloActual ms (empieza en
+  // MIN_TICK_GAP_MS y va subiendo), sin importar si cambió la opción en
+  // este paso o no.
+  if (activo && state.modoConstante && spinTimeActual - state.ultimoTickSpinTime >= state.intervaloActual) {
     intentarTick();
   }
 
@@ -237,6 +242,7 @@ export function iniciarGiro() {
 
   // Cada giro nuevo arranca en modo constante otra vez.
   state.modoConstante = true;
+  state.intervaloActual = MIN_TICK_GAP_MS;
   state.ultimoCambioSpinTime = 0;
   state.ultimoTickSpinTime = 0;
   state.lastSoundOptionName = null;

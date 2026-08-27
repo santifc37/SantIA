@@ -1,3 +1,4 @@
+// public/ruleta/scripts/wheel.js
 import { wheelPattern, VENTANA_DEDUPLICACION_MS } from './config.js';
 
 export function mezclarArray(arr) {

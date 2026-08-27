@@ -10,7 +10,7 @@
 </head>
 <body>
 
-  <!-- Pantalla de carga fullscreen -->
+
   <div id="loadingOverlay" class="loading-overlay">
     <div class="loading-box">
       <div class="loading-text">⏳ Cargando imagenes...</div>
@@ -145,19 +145,25 @@
     <button id="btn-save-key" type="button">Actualizar Key</button>
   </div>
 </div>
-  
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
-  <!-- Al final de tu <body> -->
-  <script type="module" src="./scripts/main.js"></script>
-  <script defer src="/_vercel/insights/script.js"></script>
-  <script>
-  const toggleBtn = document.getElementById('btn-toggle-panel');
-  const submenu = document.getElementById('admin-submenu');
 
-  toggleBtn.addEventListener('click', function () {
-    submenu.classList.toggle('open');
-    toggleBtn.classList.toggle('active');
-  });
-</script>
+  <!-- Socket.io -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
+
+  <!-- main.js usa imports (type="module") y está en public/ruleta/scripts/ -->
+  <script type="module" src="/ruleta/scripts/main.js"></script>
+
+  <!-- Lógica local de tu menú de administración -->
+  <script>
+    const toggleBtn = document.getElementById('btn-toggle-panel');
+    const submenu = document.getElementById('admin-submenu');
+
+    if (toggleBtn && submenu) {
+      toggleBtn.addEventListener('click', function () {
+        submenu.classList.toggle('open');
+        toggleBtn.classList.toggle('active');
+      });
+    }
+  </script>
+
 </body>
 </html>
