@@ -1,5 +1,5 @@
 // public/ruleta/scripts/wheel.js
-import { wheelPattern, VENTANA_DEDUPLICACION_MS } from './config.js';
+import { wheelPattern, wheelPatternEvento, VENTANA_DEDUPLICACION_MS, state } from './config.js';
 
 export function mezclarArray(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
@@ -9,7 +9,8 @@ export function mezclarArray(arr) {
 }
 
 export function obtenerColorSector(i) {
-  return wheelPattern[i % wheelPattern.length];
+  const patron = state.eventoActivo ? wheelPatternEvento : wheelPattern;
+  return patron[i % patron.length];
 }
 
 export function mezclarSinAdyacentesIguales(arr) {
@@ -69,6 +70,3 @@ export function obtenerIndiceBajoPuntero(rotationDeg, n) {
   const sliceAngle = ((180 - displayRotation) % 360 + 360) % 360;
   return Math.floor(sliceAngle / anglePer) % n;
 }
-
-
-

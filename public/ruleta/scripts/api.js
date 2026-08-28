@@ -49,3 +49,8 @@ async function actualizarToken(password, newKey) {
   return resultado;
 }
 
+export async function fetchSegundaTabla() {
+  const response = await fetch('/api/obtener-segunda-tabla');
+  if (!response.ok) throw new Error(`Error en el servidor: ${response.status}`);
+  return response.json();
+}

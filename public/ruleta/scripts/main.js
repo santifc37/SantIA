@@ -1,6 +1,6 @@
 import { state, CUSTOM_PERK_ICON } from './config.js';
-import { fetchPerks, fetchDonacionesEspeciales } from './api.js';
-// Cambiado de '../../scripts/' a './' porque están en la misma carpeta scripts/
+import { fetchPerks, fetchDonacionesEspeciales, fetchSegundaTabla } from './api.js';
+
 import { mezclarSinAdyacentesIguales } from './utils.js';
 import { dibujarRuleta, dibujarOverlayEstatico, actualizarEstadoRuleta, iniciarGiroEnEspera, setupWheelEventListeners } from './wheel.js';
 import { renderizarListaOpciones, precargarImagenes, ocultarPantallaCarga, setupUIEventListeners, actualizarAutoScrollDonaciones, iniciarTimersEnVivo } from './ui.js';
@@ -38,13 +38,10 @@ async function inicializarPerks() {
     
     renderizarListaOpciones();
     actualizarEstadoRuleta();
-
-    const urlsImagenesMenu = state.dbPerks.map(perk => perk.img);
-    await precargarImagenes(urlsImagenesMenu);
-    ocultarPantallaCarga();
+    
+    // (Se remueve la precarga parcial de aquí para hacerla global abajo)
   } catch (error) {
     console.error('Error al cargar perks:', error);
-    ocultarPantallaCarga();
   }
 }
 
@@ -99,6 +96,46 @@ async function inicializarDonaciones() {
     console.error('Error cargando donaciones:', err);
   }
 }
+async function inicializarSegundaTabla() {
+  try {
+    const data = await fetchSegundaTabla();
+    if (!Array.isArray(data)) return;
+
+    let seAgregoAlgunaOpcion = false;
+
+    data.forEach((item, index) => {
+      // Ignorar si el registro no es válido
+      if (item.id == null) return;
+
+      // Generamos un ID único en el frontend mezclando la tabla, el id de DB y un timestamp/índice.
+      // Esto evita que colisione con el ID de la primera tabla.
+      const idUnicoEnFrontend = `tabla2-${item.id}-${Date.now()}-${index}`;
+
+      // Insertamos CADA ítem, incluso si el nombre o el dbId se repiten
+      state.options.push({
+        id: idUnicoEnFrontend,
+        dbId: item.id,
+        name: item.nombre || item.name,
+        alias: '',
+        img: item.image || CUSTOM_PERK_ICON,
+        isSegundaTabla: true
+      });
+
+      seAgregoAlgunaOpcion = true;
+    });
+
+    if (seAgregoAlgunaOpcion) {
+      // Si la ruleta no está girando, mezclar para distribuir las repetidas por la ruleta
+      if (!state.spinning) state.options = mezclarSinAdyacentesIguales(state.options);
+      
+      // Forzar a la UI y al Canvas a redibujar la ruleta con las nuevas porciones
+      actualizarEstadoRuleta();
+      renderizarListaOpciones();
+    }
+  } catch (err) {
+    console.error('Error cargando segunda tabla:', err);
+  }
+}
 
 // URL de tu backend en Render
 const RENDER_URL = 'https://server-render-ruleta.onrender.com/api/verificar';
@@ -116,6 +153,30 @@ function obtenerCookie(nombre) {
   return null;
 }
 
+// Agrega la función de precarga de audios al inicio de main.js o en ui.js
+function precargarAudios() {
+  if (typeof audios === 'undefined' || !audios) {
+    console.warn('Objeto de audios no encontrado, saltando precarga.');
+    return Promise.resolve();
+  }
+
+  const listaAudios = [audios.red, audios.win, ...(audios.ticks || [])].filter(Boolean);
+  
+  return Promise.all(
+    listaAudios.map(audio => {
+      return new Promise((resolve) => {
+        audio.preload = 'auto';
+        if (audio.readyState >= 2) {
+          resolve();
+        } else {
+          audio.addEventListener('canplaythrough', resolve, { once: true });
+          audio.addEventListener('error', resolve, { once: true });
+          audio.load();
+        }
+      });
+    })
+  );
+}
 document.addEventListener("DOMContentLoaded", async () => {
   const token = obtenerCookie('token_sesion');
 
@@ -125,7 +186,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   try {
-    // Petición directa a Render para comprobar la cookie contra process.env.Papita_Papital
     const res = await fetch(`${RENDER_URL}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -144,7 +204,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  // --- Inicialización normal de la ruleta ---
+  // --- Inicialización con precarga global de Recursos ---
   try {
     iniciarKeepAliveRender(300000);
 
@@ -154,13 +214,33 @@ document.addEventListener("DOMContentLoaded", async () => {
     dibujarOverlayEstatico();
     iniciarGiroEnEspera();
 
+    // 1. Cargar los datos de todas las tablas en state.options
     await inicializarPerks();
     await inicializarDonaciones();
+    await inicializarSegundaTabla();
+
+    // 2. Extraer TODAS las URLs de imágenes cargadas en state.options y state.dbPerks
+    const urlsImagenesTotales = Array.from(
+      new Set([
+        ...state.dbPerks.map(p => p.img),
+        ...state.options.map(o => o.img)
+      ])
+    ).filter(url => url && url.length > 0);
+
+    // 3. Precargar de forma simultánea TODAS las imágenes y sonidos
+    await Promise.all([
+      precargarImagenes(urlsImagenesTotales),
+      precargarAudios()
+    ]);
+
+    // 4. Una vez descargado absolutamente todo, habilitamos la pantalla
+    ocultarPantallaCarga();
 
     iniciarEscuchaPerks(() => {
       inicializarDonaciones();
     });
   } catch (error) {
     console.error('Error al inicializar la app:', error);
+    ocultarPantallaCarga(); // Fallback de seguridad si falla la red
   }
 });

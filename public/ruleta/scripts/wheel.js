@@ -1,5 +1,17 @@
-import { state, MIN_TICK_GAP_MS, UMBRAL_CAMBIO_MODO_MS, audios } from './config.js';
-import { obtenerColorSector, obtenerIndiceBajoPuntero } from './utils.js';
+import {
+  state,
+  MIN_TICK_GAP_MS,
+  UMBRAL_CAMBIO_MODO_MS,
+  audios,
+  EVENT_CHANCE,
+  EVENT_PERK_PREFIXES,
+  EVENT_COPIES_PER_PERK,
+  lightColorsNormal,
+  lightColorsEvento,
+  EVENTO_DECOY_DURATION_MS,
+  EVENTO_GLITCH_DURATION_MS,
+} from './config.js';
+import { obtenerColorSector, obtenerIndiceBajoPuntero, mezclarSinAdyacentesIguales } from './utils.js';
 
 // Misma fórmula exacta de easing que usa wheeldecide.com en su wheel.js real.
 function easeOut(t, b, c, d) {
@@ -12,6 +24,7 @@ const canvas = document.getElementById('wheel');
 const ctx = canvas.getContext('2d');
 const overlayCanvas = document.getElementById('overlayCanvas');
 const overlayCtx = overlayCanvas.getContext('2d');
+const wheelWrap = document.querySelector('.wheel-wrap');
 
 const diamondImg = document.getElementById('diamondImg');
 const centerDiamondWrapper = document.querySelector('.center-diamond-wrapper');
@@ -65,12 +78,16 @@ export function dibujarRuleta() {
     ctx.fillStyle = obtenerColorSector(i);
     ctx.fill();
 
+    ctx.strokeStyle = state.eventoActivo ? '#000000' : '#ffffff'; 
+    ctx.lineWidth = 2; // O usa '0' si quieres borrar la línea por completo
+    ctx.stroke();
+
     ctx.save();
     ctx.translate(outerRadius, outerRadius);
     ctx.rotate(startAngle + anglePer / 2 + Math.PI);
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#000000';
+    ctx.fillStyle = state.eventoActivo ? '#ffffff' : '#000000';
     ctx.font = '900 32px Montserrat, sans-serif';
     let label = state.options[i].name;
     if (label.length > 22) label = label.slice(0, 21) + '…';
@@ -83,11 +100,11 @@ export function dibujarRuleta() {
     const angle = i * anglePer;
     ctx.save();
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 5;
+    ctx.lineWidth = -1;
     ctx.beginPath();
     ctx.moveTo(outerRadius, outerRadius);
     ctx.lineTo(outerRadius + outerRadius * Math.cos(angle), outerRadius + outerRadius * Math.sin(angle));
-    ctx.stroke();
+    //ctx.stroke();
     ctx.restore();
   }
 }
@@ -107,7 +124,7 @@ export function dibujarOverlayEstatico() {
   overlayCtx.arc(cx, cx, cx, 0, 2 * Math.PI);
   overlayCtx.clip();
 
-  const lightColors = ['#00ff66', '#ffea00', '#ff2a2a', '#00a2ff'];
+  const lightColors = state.eventoActivo ? lightColorsEvento : lightColorsNormal;
   const conicGradient = overlayCtx.createConicGradient(0, cx, cx);
   lightColors.forEach((color, i) => conicGradient.addColorStop(i / lightColors.length, color));
   conicGradient.addColorStop(1, lightColors[0]);
@@ -134,14 +151,10 @@ function actualizarRomboSegunRotacion(rotationDeg, spinTimeActual = null) {
   const idx = obtenerIndiceBajoPuntero(rotationDeg, state.options.length);
   const opt = state.options[idx];
 
-  // spinTimeActual solo llega desde rotarPaso() durante un giro real; en
-  // idle/drag/estado-inicial llega null y no se toca el sonido.
+
   const activo = spinTimeActual !== null && state.spinning && !winnerOverlay.classList.contains('active');
 
-  // Piso mínimo UNIVERSAL entre dos ticks, sin importar si lo disparó el
-  // modo constante o el sincronizado. Sin esto, justo en el instante de la
-  // transición puede sonar un tick del modo constante y, casi enseguida,
-  // otro del modo sincronizado — quedan pegados y suenan como doble.
+
   const intentarTick = () => {
     if (spinTimeActual - state.ultimoTickSpinTime < MIN_TICK_GAP_MS) return;
     reproducirTick();
@@ -150,22 +163,11 @@ function actualizarRomboSegunRotacion(rotationDeg, spinTimeActual = null) {
 
   if (opt.name !== state.lastSoundOptionName) {
     if (activo) {
-      // Cuánto tardó en pasar de la opción anterior a esta.
       const gap = spinTimeActual - state.ultimoCambioSpinTime;
       state.ultimoCambioSpinTime = spinTimeActual;
 
       if (state.modoConstante) {
-        // El intervalo del modo constante sube gradualmente (86, 87, 88...)
-        // siguiendo el gap real entre cambios de opción, en vez de quedar
-        // fijo en MIN_TICK_GAP_MS todo el tiempo. Así, cuando finalmente
-        // toca el umbral y pasa a modo sincronizado, no hay salto brusco:
-        // ya estaba sonando casi al mismo ritmo que el real.
         state.intervaloActual = Math.min(UMBRAL_CAMBIO_MODO_MS, Math.max(MIN_TICK_GAP_MS, gap));
-
-        // La rueda solo frena durante un giro, nunca acelera, así que este
-        // cambio de modo es de una sola vía: una vez que tarda
-        // UMBRAL_CAMBIO_MODO_MS o más en cambiar de opción, se queda en
-        // modo sincronizado por el resto del giro.
         if (gap >= UMBRAL_CAMBIO_MODO_MS) {
           state.modoConstante = false;
         }
@@ -222,8 +224,9 @@ function detenerGiro() {
   winnerText.textContent = `¡${winner.name}!`;
   const normalizedName = winner.name.trim().toLowerCase();
   
-  if (normalizedName.startsWith('me la pela') || normalizedName.startsWith('slot vacío')) audios.red.play().catch(()=>{});
+  if (normalizedName.startsWith('me la pela') || normalizedName.startsWith('slot vacío')|| normalizedName.startsWith('objeto de obsesión')) audios.red.play().catch(()=>{});
   else audios.win.play().catch(()=>{});
+
 
   winnerOverlay.classList.add('active');
   centerDiamondWrapper.classList.add('hidden');
@@ -231,21 +234,87 @@ function detenerGiro() {
   diamondImg.src = winner.img;
 }
 
-export function iniciarGiro() {
-  if (state.spinning || state.options.length < 2) return;
-  state.spinning = true;
-  winnerOverlay.classList.remove('active');
-  centerDiamondWrapper.classList.remove('hidden');
-  spinHint.classList.add('hidden');
-  wheelDarkOverlay.classList.add('hidden');
-  mysteryDiamondImg.classList.add('hidden');
 
-  // Cada giro nuevo arranca en modo constante otra vez.
+let opcionesNormalesBackup = null;
+
+function obtenerCatalogoParaEvento() {
+  const combinado = [...(state.dbPerks || []), ...(state.options || [])];
+  const vistos = new Set();
+  const resultado = [];
+  combinado.forEach((p) => {
+    if (!p || !p.name) return;
+    const clave = p.name.trim().toLowerCase();
+    if (vistos.has(clave)) return;
+    vistos.add(clave);
+    resultado.push(p);
+  });
+  return resultado;
+}
+
+function buscarPerkEvento(prefijo) {
+  const objetivo = prefijo.trim().toLowerCase();
+  // Devuelve un array con TODAS las coincidencias (base + donaciones)
+  return obtenerCatalogoParaEvento().filter((p) => p && p.name && p.name.trim().toLowerCase().startsWith(objetivo));
+}
+
+function construirOpcionesEvento() {
+  // flatMap aplanarás los sub-arrays devueltos por .filter()
+  const perksEncontrados = EVENT_PERK_PREFIXES.flatMap(buscarPerkEvento).filter(Boolean);
+  if (perksEncontrados.length === 0) return null;
+
+  const opciones = [];
+  perksEncontrados.forEach((perk) => {
+    // Ahora 'perk' es un objeto individual válido
+    for (let i = 0; i < EVENT_COPIES_PER_PERK; i++) {
+      opciones.push(perk);
+    }
+  });
+
+  const mezcladas = mezclarSinAdyacentesIguales(opciones);
+  return mezcladas || opciones; // Retorna sin mezclar en caso de fallback para evitar undefined
+}
+
+function activarModoEvento() {
+  const opcionesEvento = construirOpcionesEvento();
+  if (!opcionesEvento) return false;
+
+  opcionesNormalesBackup = state.options;
+  state.options = opcionesEvento;
+  state.eventoActivo = true;
+  wheelWrap?.classList.add('evento-activo');
+  dibujarRuleta();
+  dibujarOverlayEstatico();
+  return true;
+}
+
+// Revierte el modo evento a la normalidad: restaura state.options,
+// apaga el flag y la clase CSS, y redibuja. Es un no-op si el evento
+// ya estaba apagado (así se puede llamar "por las dudas" sin chequear).
+function desactivarModoEvento() {
+  if (!state.eventoActivo) return;
+  if (opcionesNormalesBackup) state.options = opcionesNormalesBackup;
+  opcionesNormalesBackup = null;
+  state.eventoActivo = false;
+  wheelWrap?.classList.remove('evento-activo');
+  dibujarRuleta();
+  dibujarOverlayEstatico();
+}
+
+// Cada giro nuevo (real o señuelo) arranca el conteo de ticks desde cero.
+function prepararVariablesDeSonido() {
   state.modoConstante = true;
   state.intervaloActual = MIN_TICK_GAP_MS;
   state.ultimoCambioSpinTime = 0;
   state.ultimoTickSpinTime = 0;
   state.lastSoundOptionName = null;
+}
+
+// El giro "de verdad": misma física de siempre (15s, easeOut de
+// wheeldecide.com), termina en detenerGiro() y revela un ganador. Se usa
+// tanto para un giro normal como para el giro real del evento (una vez
+// que ya se hizo el swap de opciones/paleta).
+function ejecutarGiroReal() {
+  prepararVariablesDeSonido();
 
   const spinAngleStart = Math.random() * 30 + 20;
   const spinTimeTotal = 15000; // igual que wheeldecide.com (minTimeToSpin = 15)
@@ -269,6 +338,68 @@ export function iniciarGiro() {
   state.animationFrameId = setTimeout(rotarPaso, 30);
 }
 
+// El giro "señuelo": misma mecánica de easeOut pero mucho más corto
+// (EVENTO_DECOY_DURATION_MS) y con la rueda todavía en modo normal —
+// no termina en un ganador, sino que llama a alTerminar() cuando la
+// rueda queda quieta, para encadenar el efecto de flash+glitch.
+function ejecutarGiroSenuelo(alTerminar) {
+  prepararVariablesDeSonido();
+
+  const spinAngleStart = Math.random() * 20 + 15;
+  const spinTimeTotal = EVENTO_DECOY_DURATION_MS;
+  let spinTime = 0;
+
+  function rotarPaso() {
+    if (!state.spinning) return;
+    spinTime += 30;
+    if (spinTime >= spinTimeTotal) { alTerminar(); return; }
+
+    const spinAngle = spinAngleStart - easeOut(spinTime, 0, spinAngleStart, spinTimeTotal);
+    state.currentRotation += spinAngle;
+    canvas.style.transform = `rotate(${state.currentRotation}deg)`;
+
+    actualizarRomboSegunRotacion(state.currentRotation, spinTime);
+    state.animationFrameId = setTimeout(rotarPaso, 30);
+  }
+  state.animationFrameId = setTimeout(rotarPaso, 30);
+}
+
+export function iniciarGiro() {
+  if (state.spinning || state.options.length < 2) return;
+  state.spinning = true;
+  winnerOverlay.classList.remove('active');
+  centerDiamondWrapper.classList.remove('hidden');
+  spinHint.classList.add('hidden');
+  wheelDarkOverlay.classList.add('hidden');
+  mysteryDiamondImg.classList.add('hidden');
+
+  const esEvento = Math.random() < EVENT_CHANCE;
+
+  if (!esEvento) {
+    ejecutarGiroReal();
+    return;
+  }
+
+  // Secuencia de evento: giro señuelo (normal) -> desacelera fluido hasta
+  // frenar del todo -> flash+glitch breve -> recién ahí swap a paleta/
+  // opciones de evento -> arranca el giro real de verdad.
+  ejecutarGiroSenuelo(() => {
+    wheelWrap?.classList.add('evento-flash');
+    setTimeout(() => {
+      wheelWrap?.classList.remove('evento-flash');
+
+      // Si en el medio el usuario canceló el giro (click durante el
+      // señuelo o el flash), no forzamos el arranque del evento.
+      if (!state.spinning) return;
+
+      // Si ninguno de los 4 perks fijos existe hoy en la base, seguimos
+      // en modo normal para no romper el giro.
+      activarModoEvento();
+      ejecutarGiroReal();
+    }, EVENTO_GLITCH_DURATION_MS);
+  });
+}
+
 export function setupWheelEventListeners() {
   winnerOverlay.addEventListener('click', () => {
     winnerOverlay.classList.remove('active');
@@ -276,6 +407,7 @@ export function setupWheelEventListeners() {
     spinHint.classList.add('hidden');
     wheelDarkOverlay.classList.add('hidden');
     mysteryDiamondImg.classList.add('hidden');
+    desactivarModoEvento();
     iniciarGiro();
   });
 
@@ -286,6 +418,7 @@ export function setupWheelEventListeners() {
     if (state.spinning) {
       state.spinning = false;
       if (state.animationFrameId) clearTimeout(state.animationFrameId);
+      desactivarModoEvento();
       spinHint.classList.remove('hidden');
       wheelDarkOverlay.classList.remove('hidden');
       mysteryDiamondImg.classList.remove('hidden');
