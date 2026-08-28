@@ -6,6 +6,7 @@ import { dibujarRuleta, dibujarOverlayEstatico, actualizarEstadoRuleta, iniciarG
 import { renderizarListaOpciones, precargarImagenes, ocultarPantallaCarga, setupUIEventListeners, actualizarAutoScrollDonaciones, iniciarTimersEnVivo } from './ui.js';
 import { iniciarKeepAliveRender } from './streamlabs.js';
 import { iniciarEscuchaPerks } from './realtime.js';
+import { initNeonRing } from './anilloneon.js';
 
 // 1. Escalar el escenario para resoluciones dinámicas
 (function initStageScaler() {
@@ -160,7 +161,7 @@ function precargarAudios() {
     return Promise.resolve();
   }
 
-  const listaAudios = [audios.red, audios.win, ...(audios.ticks || [])].filter(Boolean);
+  const listaAudios = [audios.shit, audios.red, audios.win, ...(audios.ticks || [])].filter(Boolean);
   
   return Promise.all(
     listaAudios.map(audio => {
@@ -207,12 +208,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   // --- Inicialización con precarga global de Recursos ---
   try {
     iniciarKeepAliveRender(300000);
-
     setupUIEventListeners();
     setupWheelEventListeners();
     dibujarRuleta();
     dibujarOverlayEstatico();
     iniciarGiroEnEspera();
+     initNeonRing('#ruletaNeon');
 
     // 1. Cargar los datos de todas las tablas en state.options
     await inicializarPerks();

@@ -6,18 +6,8 @@ export const CUSTOM_PERK_ICON = crearUriSvgLimpia('<svg xmlns="http://www.w3.org
 
 export const wheelPattern = ['#FFFFFF', '#FFEA00', '#FFFFFF', '#0033CC', '#FFFFFF', '#E60000'];
 
-// ===================================================================
-// MODO EVENTO ("sangre y vacío"): ruleta especial que sale con una
-// probabilidad baja, muestra siempre los mismos 4 perks fijos
-// (repetidos) y usa una paleta roja/negra en vez de la normal.
-// ===================================================================
+export const EVENT_CHANCE = 0.5;
 
-// Probabilidad de que un giro sea "evento" (0.04 = 4%).
-export const EVENT_CHANCE = 0.04;
-
-// Perks que sí o sí entran al evento. Los nombres reales en la base de
-// datos vienen con texto adicional, así que se buscan por prefijo
-// (mismo criterio que ya usa detenerGiro() para "me la pela"/"slot vacío").
 export const EVENT_PERK_PREFIXES = ['chayanne', 'slot vacío', 'me la pela', 'objeto de obsesión'];
 
 // Cuántas veces se repite cada uno de esos perks en la ruleta de evento.
@@ -47,7 +37,8 @@ export const VENTANA_DEDUPLICACION_MS = 4000;
 export const audios = {
   ticks: [new Audio('source/sonido3.ogg'), new Audio('source/sonido3.ogg'), new Audio('source/sonido3.ogg')],
   red: new Audio('source/sonidoreddead.ogg'),
-  win: new Audio('source/winner.ogg')
+  win: new Audio('source/winner.ogg'),
+  shit: new Audio('source/ohshit.ogg')
 };
 
 // Configuración inicial del volumen

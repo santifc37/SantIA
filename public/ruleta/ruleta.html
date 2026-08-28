@@ -4,12 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ruleta de Perks</title>
-  <!-- Fuente Montserrat con pesos altos -->
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-
 
   <div id="loadingOverlay" class="loading-overlay">
     <div class="loading-box">
@@ -34,10 +32,7 @@
     </div>
   </div>
 
-  <!-- Primera pantalla: visible sin scroll, diseñada a 1920x1020 (OBS).
-       stageOuter/stageScaler escalan este bloque para que se vea siempre
-       exactamente igual, sin recortes ni deformación, sea cual sea el
-       tamaño real de la ventana o de la fuente de navegador en OBS. -->
+  <!-- Primera pantalla -->
   <div id="stageOuter">
    <div id="stageScaler">
     <div class="stage">
@@ -48,8 +43,26 @@
           <div class="pointer" id="pointer"></div>
           <canvas id="wheel"></canvas>
 
-          <!-- Canvas estático para luces y profundidad -->
-          <canvas id="overlayCanvas"></canvas>
+          <!-- CAPA INDEPENDIENTE DEL ANILLO NEÓN -->
+          <div class="ruleta-container" id="ruletaNeon">
+            <svg viewBox="0 0 220 220">
+              <defs>
+                <filter id="blur-soft" x="-100%" y="-100%" width="300%" height="300%">
+                  <feGaussianBlur stdDeviation="1.2" />
+                </filter>
+                <filter id="blur-wide" x="-100%" y="-100%" width="300%" height="300%">
+                  <feGaussianBlur stdDeviation="3.2" />
+                </filter>
+              </defs>
+
+              <g class="glow-spin ring-layer" data-width="7.5" filter="url(#blur-wide)" opacity="0.65"></g>
+              <g class="glow-spin ring-layer" data-width="5.8" filter="url(#blur-soft)" opacity="0.85"></g>
+              <g class="glow-spin ring-layer" data-width="5.2" opacity="1"></g>
+              <g class="glow-spin">
+                <circle id="neonCore" r="112" cx="110" cy="110" stroke="#ffffff" stroke-width="6" fill="none"/>
+              </g>
+            </svg>
+          </div>
 
           <div class="center-diamond-wrapper">
             <div class="center-diamond">
@@ -57,7 +70,7 @@
             </div>
           </div>
 
-          <!-- Imagen misterio: se muestra sobre el rombo mientras está el "CLICK PARA GIRAR" -->
+          <!-- Imagen misterio -->
           <img id="mysteryDiamondImg" class="mystery-diamond-img" src="source/misterio.webp" alt="Misterio">
 
           <!-- Fondo oscuro del modo espera -->
@@ -83,7 +96,7 @@
         </div>
       </div>
 
-      <!-- Panel de donaciones / perks añadidas fuera de wheel-section -->
+      <!-- Panel de donaciones -->
       <div class="donations-container">
         <div class="header-status">
           <h3>PERKS AÑADIDAS</h3>
@@ -93,7 +106,6 @@
           </div>
         </div>
 
-        <!-- Ventana fija: si la lista no entra completa, se desplaza sola -->
         <div class="donations-scroll" id="donationsScroll">
           <ul id="donationsList">
             <li class="empty">SIN PERKS AÑADIDAS...</li>
@@ -104,9 +116,8 @@
     </div>
    </div>
   </div>
-  <!-- Fin de la primera pantalla -->
 
-  <!-- Segunda pantalla: panel de administración -->
+  <!-- Segunda pantalla -->
   <div class="admin-section">
     <div class="container">
       <div class="panel">
@@ -146,13 +157,9 @@
   </div>
 </div>
 
-  <!-- Socket.io -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
-
-  <!-- main.js usa imports (type="module") y está en public/ruleta/scripts/ -->
   <script type="module" src="/ruleta/scripts/main.js"></script>
 
-  <!-- Lógica local de tu menú de administración -->
   <script>
     const toggleBtn = document.getElementById('btn-toggle-panel');
     const submenu = document.getElementById('admin-submenu');

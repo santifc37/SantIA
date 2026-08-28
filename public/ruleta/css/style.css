@@ -22,7 +22,7 @@ body {
   overflow-x: hidden;
 }
 
-/* Barra de scroll invisible (Chrome / Edge / Safari / OBS) */
+/* Barra de scroll invisible */
 ::-webkit-scrollbar {
   width: 0;
   height: 0;
@@ -30,21 +30,12 @@ body {
 }
 
 /* ===================================================================
-   PRIMERA PANTALLA ("stage"): esta es la parte que debe verse completa,
-   sin necesidad de hacer scroll, diseñada a resolución fija 1920x1020
-   (tamaño recomendado de la fuente de navegador en OBS).
-
-   #stageOuter / #stageScaler (ver más abajo) toman este bloque de
-   1920x1020px y lo escalan uniformemente para que encaje siempre
-   perfecto, sin deformarse, sea cual sea el tamaño real de la ventana
-   o de la fuente de navegador: a 1920x1020 exactos se ve a escala 1:1
-   (pixel perfect), y en cualquier otro tamaño se reduce/amplía
-   manteniendo la proporción y quedando centrado.
+   PRIMERA PANTALLA ("stage")
    =================================================================== */
 #stageOuter {
   position: relative;
   width: 100%;
-  height: 100vh; /* ocupa siempre TODO el alto real de la ventana/fuente OBS, así nunca se asoma lo que hay debajo (panel de administración) */
+  height: 100vh;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -55,7 +46,7 @@ body {
   width: 1920px;
   height: 1020px;
   flex-shrink: 0;
-  transform-origin: center center; /* al escalar, se achica/agranda desde el centro, sin moverse del centro del flex */
+  transform-origin: center center;
 }
 
 .stage {
@@ -67,9 +58,9 @@ body {
 .wheel-section {
   position: absolute;
   top: 50%;
-  left: 891px; /* 46.43% de 1920 */
+  left: 891px;
   transform: translateY(-50%);
-  width: 1000px; /* 51.6% de 1920 */
+  width: 1000px;
   max-width: 1400px;
   display: flex;
   flex-direction: column;
@@ -85,8 +76,6 @@ h1 {
   text-align: center;
 }
 
-/* El <h1> viene vacío en este proyecto: si no tiene texto, que no
-   ocupe espacio ni descentre la ruleta */
 h1:empty {
   display: none;
 }
@@ -94,34 +83,58 @@ h1:empty {
 .wheel-wrap {
   position: relative;
   width: 100%;
-  height: 1000px; /* misma medida que el ancho para que el círculo no se deforme */
+  height: 1000px;
   max-width: 1400px;
   max-height: 1400px;
   touch-action: none;
   border-radius: 50%;
-  border: 30px solid white;
-
-  /* Sombra de profundidad hacia adentro */
-  box-shadow: inset 0 0 26px rgba(0, 0, 0, 0.35);
+  /* Eliminadas las variables --halo-color-1 a 4 */
+  --pointer-color: #ffea00;
 }
 
 /* Borde en Modo Evento */
 .wheel-wrap.evento-activo {
-  border-color: #000000 !important;
+  --pointer-color: #ff1a1a;
 }
 
+/* CAPA NEÓN SUPERPUESTA AL EXTERIOR */
+.ruleta-container {
+  position: absolute;
+  inset: -2px; /* Abraza exactamente los bordes del .wheel-wrap sin escaparse */
+  width: auto;
+  height: auto;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 199;
+}
+
+.ruleta-container svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.glow-spin {
+  animation: neonSpin 50s linear infinite;
+  transform-origin: 110px 110px;
+}
+
+@keyframes neonSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+
+
 /* ===================================================================
-   SEGUNDA PANTALLA: todo lo que NO está señalado en la foto de
-   referencia (panel de opciones, buscador, paginación) queda debajo
-   de la primera pantalla, con su propia paleta oscura, ya que sobre
-   un fondo blanco (el de un navegador normal) no se ve bien.
+   SEGUNDA PANTALLA
    =================================================================== */
 .admin-section {
   position: relative;
   width: 100%;
   min-height: 100vh;
-  background: transparent; /* <--- Cambiado de linear-gradient a transparente */
-  border-top: none;        /* Opcional: quita la línea divisoria si ya no la quieres */
+  background: transparent;
+  border-top: none;
 }
 
 .container {
@@ -133,12 +146,11 @@ h1:empty {
   max-width: 1550px;
   margin: 0 auto;
   padding: 50px 15px 60px 15px;
-  background: transparent; /* <--- Aseguramos que el contenedor general tampoco tenga color */
+  background: transparent;
 }
 
-/* El panel donde están las opciones MANTIENE su color oscuro */
 .panel {
-  background: rgba(20, 14, 32, 0.9); /* <--- Este es el color del panel que sí quieres conservar */
+  background: rgba(20, 14, 32, 0.9);
   border: 1px solid rgba(162, 89, 255, 0.18);
   border-radius: 18px;
   padding: 22px;
@@ -154,18 +166,15 @@ h1:empty {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(12, 10, 18, 0.95); /* Fondo oscuro semitransparente */
-  backdrop-filter: blur(8px);               /* Efecto borroso de fondo */
+  background-color: rgba(12, 10, 18, 0.95);
+  backdrop-filter: blur(8px);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 99999;                          /* Por encima de todo */
+  z-index: 99999;
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
-  /* Fade out suave: tanto la opacidad como la visibilidad se animan,
-     así el overlay deja de ser interactivo/clickeable en cuanto empieza
-     a desvanecerse, sin esperar al display:none final. */
   transition: opacity 0.4s ease, visibility 0.4s ease;
 }
 
@@ -190,7 +199,6 @@ h1:empty {
   letter-spacing: 1px;
 }
 
-/* Barra de progreso de precarga de imágenes (0% -> 100%) */
 .loading-bar-track {
   width: 280px;
   max-width: 60vw;
@@ -215,75 +223,6 @@ h1:empty {
   letter-spacing: 1px;
 }
 
-#overlayCanvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none; /* Permite arrastrar la ruleta a través del canvas transparente */
-  z-index: 10;
-
-  /* Giro lento y pasivo de las luces de colores (el anillo exterior y el
-     interior se dibujan juntos en este mismo canvas, así que ambos giran
-     a la vez), siempre activo, independiente del giro de la ruleta.
-     Duración larga a propósito para que el movimiento sea casi imperceptible. */
-  animation: ledSpin 140s linear infinite;
-}
-
-@keyframes ledSpin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-
-.wheel-wrap {
-  /* Paleta del halo y del puntero, en variables para poder overridearla
-     completa en modo evento con una sola clase (.evento-activo). */
-  --halo-color-1: #2afc00; /* Verde */
-  --halo-color-2: #ffea00; /* Amarillo */
-  --halo-color-3: #ff2a2a; /* Rojo */
-  --halo-color-4: #0500f3; /* Azul */
-  --pointer-color: #ffea00;
-}
-
-.wheel-wrap::before {
-  content: "";
-  position: absolute;
-  top: -30px;
-  left: -30px;
-  right: -30px;
-  bottom: -30px;
-  border-radius: 50%;
-  z-index: -1;
-
-  /* Degradado cónico fijo con los 4 colores */
-  background: conic-gradient(
-      var(--halo-color-1) 0deg 90deg,
-      var(--halo-color-2) 90deg 180deg,
-      var(--halo-color-3) 180deg 270deg,
-      var(--halo-color-4) 270deg 360deg
-  );
-
-  filter: blur(26px);
-  opacity: 0.85;
-}
-
-/* ===================================================================
-   MODO EVENTO ("sangre y vacío"): paleta roja/negra que reemplaza el
-   halo y el puntero mientras dura el giro de evento (ver wheel.js,
-   activarModoEvento/desactivarModoEvento).
-   =================================================================== */
-.wheel-wrap.evento-activo {
-  --halo-color-1: #8a0000;
-  --halo-color-2: #000000;
-  --halo-color-3: #c40000;
-  --halo-color-4: #1a0000;
-  --pointer-color: #ff1a1a;
-}
-
-/* Flash + sacudida glitch breve (0.3s) al confirmarse el evento, justo
-   después del giro señuelo. La duración tiene que coincidir con
-   EVENTO_GLITCH_DURATION_MS en config.js. */
 @keyframes eventoGlitchFlash {
   0%   { filter: brightness(1)   saturate(1);            transform: translate(0, 0); }
   15%  { filter: brightness(3)   saturate(2) contrast(1.3); transform: translate(-6px, 3px); }
@@ -308,8 +247,6 @@ h1:empty {
   cursor: grabbing;
 }
 
-/* CONTENEDOR DE GANADOR EXPANDIDO HASTA EL ARO BLANCO */
-/* CONTENEDOR DE GANADOR */
 .winner-overlay {
   position: absolute;
   top: 0;
@@ -323,24 +260,17 @@ h1:empty {
   align-items: center;
   justify-content: center;
   z-index: 35;
-  
-  /* Estado inicial: invisible */
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
   overflow: hidden;
-  
-  /* Sin transición al desaparecer (es instantáneo) */
   transition: none;
 }
 
 .winner-overlay.active {
-  /* Estado final: totalmente visible */
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
-  
-  /* La transición se coloca AQUÍ para que sea suave ÚNICAMENTE al aparecer */
   transition: opacity 0.6s ease, visibility 0.6s ease;
 }
 
@@ -364,9 +294,9 @@ h1:empty {
 
 .winner-banner .winner-img-wrap {
   width: 180px;
-  height: 180;
+  height: 180px;
   clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-  background: rgba(40, 25, 60, 0.85); /* Este es el fondo morado que no quieres que crezca */
+  background: rgba(40, 25, 60, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -378,7 +308,6 @@ h1:empty {
   height: 100%;
   object-fit: cover;
   transform: scale(1.22);
-  
 }
 
 .winner-banner .winner-text {
@@ -390,37 +319,29 @@ h1:empty {
   margin: 0;
 }
 
-/* VIDEO DECORATIVO CON TRANSPARENCIA (mix-blend-mode), fijo sobre la
-   ruleta: no rota (es hermano del canvas, no se le aplica el
-   transform de giro), y queda por encima de absolutamente todo
-   (ganador incluido) gracias a su z-index. */
 .wheel-fx-video {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  pointer-events: none; /* no bloquea el arrastre/click de la ruleta */
+  pointer-events: none;
   z-index: 40;
-  
-  /* NUEVO: Elimina el fondo negro puro */
   mix-blend-mode: screen; 
-  
-  /* NUEVO: Escala el video para que el aro quede sobre el borde */
   transform: scale(1.76);
 }
 
-/* ROMBO CENTRAL */
+/* ===================================================================
+   ROMBO CENTRAL
+   =================================================================== */
 .center-diamond-wrapper {
   position: absolute;
   top: 50%;
   left: 50%;
-
   width: 23%;
   height: 23%;
-
   transform: translate(-50%, -50%);
-  z-index: 20;
+  z-index: 60;
   pointer-events: none;
   transition: opacity 0.3s ease;
 }
@@ -442,22 +363,17 @@ h1:empty {
   clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
 }
 
-/* IMAGEN MISTERIO: se muestra sobre el rombo mientras está el "CLICK PARA GIRAR" */
 .mystery-diamond-img {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-
   width: 28%;
   height: 28%;
   object-fit: contain;
-
-  /* Por encima del overlay oscuro y del rombo, sin nada de opacidad */
-  z-index: 61; /* <-- Aumentado para acompañar al rombo */
+  z-index: 61;
   opacity: 1;
   visibility: visible;
-
   pointer-events: none;
   transition: opacity 0.4s ease, visibility 0.4s ease;
 }
@@ -468,12 +384,11 @@ h1:empty {
   transition: none !important;
 }
 
-/* CAPA OSCURA QUE CUBRE LA RULETA Y EL ROMBO EN ESPERA */
 .wheel-dark-overlay {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: transparent; /* Fondo negro con baja opacidad eliminado */
+  background: transparent;
   z-index: 25;
   pointer-events: none;
   opacity: 1;
@@ -481,7 +396,6 @@ h1:empty {
   transition: opacity 0.4s ease, visibility 0.4s ease;
 }
 
-/* PUNTERO AMARILLO */
 .pointer {
   position: absolute;
   top: 50%;
@@ -505,8 +419,6 @@ h1:empty {
   opacity: 1;
   visibility: visible;
   transition: opacity 0.4s ease, visibility 0.4s ease;
-  
-  /* NUEVO: Necesario para que la imagen se centre y ocupe el espacio bien */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -523,19 +435,8 @@ h1:empty {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain; /* O usa 'cover' si quieres que llene todo el círculo por completo */
+  object-fit: contain;
   filter: drop-shadow(0 4px 7px rgba(0, 0, 0, 0.55));
-}
-
-.panel {
-  background: rgba(20, 14, 32, 0.9);
-  border: 1px solid rgba(162, 89, 255, 0.18);
-  border-radius: 18px;
-  padding: 22px;
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
 .panel-header {
@@ -689,7 +590,6 @@ h1:empty {
   text-shadow: 0 0 8px rgba(255, 234, 0, 0.4);
 }
 
-/* DISEÑO DE LA VENTANA MODAL */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -766,17 +666,14 @@ h1:empty {
 
 .donations-container {
   position: absolute;
-  top: 14px; /* 1.4% de 1020 */
-  left: 23px; /* 1.2% de 1920 */
-  background: rgba(0, 0, 0, 0.6); /* <--- Recuperamos el fondo negro con baja opacidad solo para este panel */
+  top: 14px;
+  left: 23px;
+  background: rgba(0, 0, 0, 0.6);
   border-radius: 8px;
   padding: 15px;
   color: #fff;
-  width: 614px; /* 32% de 1920 */
+  width: 614px;
   max-width: 820px;
-
-  /* Panel estático: altura fija, nunca crece ni se mueve.
-     Si la lista no cabe entera, se anima sola (ver .donations-scroll). */
   height: 200px;
   max-height: 200px;
   display: flex;
@@ -793,10 +690,6 @@ h1:empty {
   margin-bottom: 12px;
 }
 
-/* Ventana visible de la lista: recorta lo que no entra. El
-   desplazamiento hacia arriba/abajo lo controla script.js animando
-   la propiedad transform de #donationsList, así que aquí no hace
-   falta scroll ni scrollbar. */
 .donations-scroll {
   position: relative;
   flex: 1 1 auto;
@@ -834,7 +727,6 @@ h1:empty {
   border-radius: 12px;
 }
 
-/* Punto indicador por defecto (Naranja/Gris mientras conecta) */
 .status-dot {
   width: 10px;
   height: 10px;
@@ -844,13 +736,11 @@ h1:empty {
   transition: all 0.3s ease;
 }
 
-/* Estado: Conectado (Verde) */
 .status-dot.online {
   background-color: #2eb872;
   box-shadow: 0 0 8px #2eb872;
 }
 
-/* Estado: Error (Rojo) */
 .status-dot.offline {
   background-color: #e63946;
   box-shadow: 0 0 8px #e63946;
@@ -858,7 +748,7 @@ h1:empty {
 
 .donation-item {
   display: flex;
-  justify-content: space-between; /* contenido a la izquierda, temporizador a la derecha */
+  justify-content: space-between;
   align-items: center;
   width: 100%;
   padding: 8px 12px;
@@ -956,32 +846,4 @@ h1:empty {
 
 .admin-submenu button:hover {
   background: #555;
-}
-
-/* Resplandor rojo cuando la clase .evento-activo está presente */
-.wheel-wrap.evento-activo .center-diamond-wrapper {
-  filter: 
-    drop-shadow(0 0 8px rgba(255, 0, 0, 0.95))
-    drop-shadow(0 0 22px rgba(255, 0, 0, 0.65))
-    drop-shadow(0 0 45px rgba(255, 0, 0, 0.35))
-    drop-shadow(0 0 80px rgba(220, 0, 0, 0.1));
-  animation: pulsoDegradadoRojo 1.8s infinite alternate ease-in-out;
-}
-
-/* Transición de entrada y salida tipo pulso */
-@keyframes pulsoDegradadoRojo {
-  0% {
-    filter: 
-      drop-shadow(0 0 6px rgba(255, 0, 0, 0.85))
-      drop-shadow(0 0 18px rgba(255, 0, 0, 0.5))
-      drop-shadow(0 0 38px rgba(255, 0, 0, 0.25))
-      drop-shadow(0 0 65px rgba(200, 0, 0, 0.08));
-  }
-  100% {
-    filter: 
-      drop-shadow(0 0 12px rgba(255, 0, 0, 1))
-      drop-shadow(0 0 30px rgba(255, 0, 0, 0.8))
-      drop-shadow(0 0 60px rgba(255, 0, 0, 0.45))
-      drop-shadow(0 0 95px rgba(255, 0, 0, 0.15));
-  }
 }

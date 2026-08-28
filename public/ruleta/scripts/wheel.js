@@ -6,35 +6,35 @@ import {
   EVENT_CHANCE,
   EVENT_PERK_PREFIXES,
   EVENT_COPIES_PER_PERK,
-  lightColorsNormal,
-  lightColorsEvento,
   EVENTO_DECOY_DURATION_MS,
   EVENTO_GLITCH_DURATION_MS,
 } from './config.js';
 import { obtenerColorSector, obtenerIndiceBajoPuntero, mezclarSinAdyacentesIguales } from './utils.js';
+import { notificarCambioModoEvento } from './anilloneon.js'; 
 
-// Misma fórmula exacta de easing que usa wheeldecide.com en su wheel.js real.
+function getWheelElements() {
+  const canvas = document.getElementById('wheel');
+  if (!canvas) return null;
+  return {
+    canvas,
+    ctx: canvas.getContext('2d'),
+    wheelWrap: document.querySelector('.wheel-wrap'),
+    diamondImg: document.getElementById('diamondImg'),
+    centerDiamondWrapper: document.querySelector('.center-diamond-wrapper'),
+    spinHint: document.querySelector('.spin-hint'),
+    wheelDarkOverlay: document.getElementById('wheelDarkOverlay'),
+    mysteryDiamondImg: document.getElementById('mysteryDiamondImg'),
+    winnerOverlay: document.getElementById('winnerOverlay'),
+    winnerImg: document.getElementById('winnerImg'),
+    winnerText: document.getElementById('winnerText')
+  };
+}
+
 function easeOut(t, b, c, d) {
   const ts = (t /= d) * t;
   const tc = ts * t;
   return b + c * (tc + -3 * ts + 3 * t);
 }
-
-const canvas = document.getElementById('wheel');
-const ctx = canvas.getContext('2d');
-const overlayCanvas = document.getElementById('overlayCanvas');
-const overlayCtx = overlayCanvas.getContext('2d');
-const wheelWrap = document.querySelector('.wheel-wrap');
-
-const diamondImg = document.getElementById('diamondImg');
-const centerDiamondWrapper = document.querySelector('.center-diamond-wrapper');
-const spinHint = document.querySelector('.spin-hint');
-const wheelDarkOverlay = document.getElementById('wheelDarkOverlay');
-const mysteryDiamondImg = document.getElementById('mysteryDiamondImg');
-
-const winnerOverlay = document.getElementById('winnerOverlay');
-const winnerImg = document.getElementById('winnerImg');
-const winnerText = document.getElementById('winnerText');
 
 function reproducirTick() {
   const canal = audios.ticks.find((a) => a.paused || a.ended);
@@ -45,6 +45,10 @@ function reproducirTick() {
 }
 
 export function dibujarRuleta() {
+  const el = getWheelElements();
+  if (!el || !el.canvas || !el.ctx) return;
+
+  const { canvas, ctx } = el;
   const dpr = window.devicePixelRatio || 1;
   const baseSize = 1202;
   canvas.width = baseSize * dpr;
@@ -79,7 +83,7 @@ export function dibujarRuleta() {
     ctx.fill();
 
     ctx.strokeStyle = state.eventoActivo ? '#000000' : '#ffffff'; 
-    ctx.lineWidth = 2; // O usa '0' si quieres borrar la línea por completo
+    ctx.lineWidth = 2;
     ctx.stroke();
 
     ctx.save();
@@ -104,56 +108,22 @@ export function dibujarRuleta() {
     ctx.beginPath();
     ctx.moveTo(outerRadius, outerRadius);
     ctx.lineTo(outerRadius + outerRadius * Math.cos(angle), outerRadius + outerRadius * Math.sin(angle));
-    //ctx.stroke();
     ctx.restore();
   }
 }
 
 export function dibujarOverlayEstatico() {
-  const dpr = window.devicePixelRatio || 1;
-  const baseSize = 1202;
-  overlayCanvas.width = baseSize * dpr;
-  overlayCanvas.height = baseSize * dpr;
-  overlayCtx.resetTransform();
-  overlayCtx.scale(dpr, dpr);
-
-  const cx = baseSize / 2;
-  overlayCtx.clearRect(0, 0, baseSize, baseSize);
-  overlayCtx.save();
-  overlayCtx.beginPath();
-  overlayCtx.arc(cx, cx, cx, 0, 2 * Math.PI);
-  overlayCtx.clip();
-
-  const lightColors = state.eventoActivo ? lightColorsEvento : lightColorsNormal;
-  const conicGradient = overlayCtx.createConicGradient(0, cx, cx);
-  lightColors.forEach((color, i) => conicGradient.addColorStop(i / lightColors.length, color));
-  conicGradient.addColorStop(1, lightColors[0]);
-
-  overlayCtx.globalAlpha = 0.8;
-  overlayCtx.filter = 'blur(4px)';
-  overlayCtx.strokeStyle = conicGradient;
-  overlayCtx.lineWidth = 12;
-  overlayCtx.beginPath();
-  overlayCtx.arc(cx, cx, cx - 10, 0, 2 * Math.PI);
-  overlayCtx.stroke();
-
-  overlayCtx.filter = 'blur(20px)';
-  overlayCtx.strokeStyle = 'rgba(0, 0, 0, 0.80)';
-  overlayCtx.lineWidth = 44;
-  overlayCtx.beginPath();
-  overlayCtx.arc(cx, cx, cx - 18, 0, 2 * Math.PI);
-  overlayCtx.stroke();
-  overlayCtx.restore();
+  // Función limpia: sin llamadas al overlay Canvas antiguo
 }
 
 function actualizarRomboSegunRotacion(rotationDeg, spinTimeActual = null) {
-  if (!state.options.length) return;
+  const el = getWheelElements();
+  if (!el || !state.options.length) return;
+
   const idx = obtenerIndiceBajoPuntero(rotationDeg, state.options.length);
   const opt = state.options[idx];
 
-
-  const activo = spinTimeActual !== null && state.spinning && !winnerOverlay.classList.contains('active');
-
+  const activo = spinTimeActual !== null && state.spinning && !el.winnerOverlay.classList.contains('active');
 
   const intentarTick = () => {
     if (spinTimeActual - state.ultimoTickSpinTime < MIN_TICK_GAP_MS) return;
@@ -173,7 +143,6 @@ function actualizarRomboSegunRotacion(rotationDeg, spinTimeActual = null) {
         }
       }
 
-      // Modo sincronizado: el tick suena justo en el cambio de opción.
       if (!state.modoConstante) {
         intentarTick();
       }
@@ -181,34 +150,40 @@ function actualizarRomboSegunRotacion(rotationDeg, spinTimeActual = null) {
     state.lastSoundOptionName = opt.name;
   }
 
-  // Modo constante: el tick suena cada state.intervaloActual ms (empieza en
-  // MIN_TICK_GAP_MS y va subiendo), sin importar si cambió la opción en
-  // este paso o no.
   if (activo && state.modoConstante && spinTimeActual - state.ultimoTickSpinTime >= state.intervaloActual) {
     intentarTick();
   }
 
-  diamondImg.src = opt.img;
-  diamondImg.style.display = 'block';
+  if (el.diamondImg) {
+    el.diamondImg.src = opt.img;
+    el.diamondImg.style.display = 'block';
+  }
 }
 
 export function actualizarEstadoRuleta() {
+  const el = getWheelElements();
   dibujarRuleta();
   if (state.options.length > 0) {
     actualizarRomboSegunRotacion(state.currentRotation);
-  } else {
-    diamondImg.style.display = 'none';
-    diamondImg.src = '';
+  } else if (el && el.diamondImg) {
+    el.diamondImg.style.display = 'none';
+    el.diamondImg.src = '';
     state.lastSoundOptionName = null;
   }
 }
 
 export function iniciarGiroEnEspera() {
+  const el = getWheelElements();
+  if (!el) return;
+
   if (state.idleAnimationId) cancelAnimationFrame(state.idleAnimationId);
   function idleStep() {
-    if (!state.spinning && !state.dragging && state.options.length >= 2 && spinHint.classList.contains('hidden') === false) {
+    const currentEl = getWheelElements();
+    if (!currentEl) return;
+
+    if (!state.spinning && !state.dragging && state.options.length >= 2 && currentEl.spinHint.classList.contains('hidden') === false) {
       state.currentRotation += 0.15;
-      canvas.style.transform = `rotate(${state.currentRotation}deg)`;
+      currentEl.canvas.style.transform = `rotate(${state.currentRotation}deg)`;
       actualizarRomboSegunRotacion(state.currentRotation);
     }
     state.idleAnimationId = requestAnimationFrame(idleStep);
@@ -217,23 +192,24 @@ export function iniciarGiroEnEspera() {
 }
 
 function detenerGiro() {
+  const el = getWheelElements();
+  if (!el) return;
+
   state.spinning = false;
   const winnerIndex = obtenerIndiceBajoPuntero(state.currentRotation, state.options.length);
   const winner = state.options[winnerIndex];
-  winnerImg.src = winner.img;
-  winnerText.textContent = `¡${winner.name}!`;
+  el.winnerImg.src = winner.img;
+  el.winnerText.textContent = `¡${winner.name}!`;
   const normalizedName = winner.name.trim().toLowerCase();
   
   if (normalizedName.startsWith('me la pela') || normalizedName.startsWith('slot vacío')|| normalizedName.startsWith('objeto de obsesión')) audios.red.play().catch(()=>{});
   else audios.win.play().catch(()=>{});
 
-
-  winnerOverlay.classList.add('active');
-  centerDiamondWrapper.classList.add('hidden');
+  el.winnerOverlay.classList.add('active');
+  el.centerDiamondWrapper.classList.add('hidden');
   state.lastSoundOptionName = null;
-  diamondImg.src = winner.img;
+  el.diamondImg.src = winner.img;
 }
-
 
 let opcionesNormalesBackup = null;
 
@@ -253,54 +229,51 @@ function obtenerCatalogoParaEvento() {
 
 function buscarPerkEvento(prefijo) {
   const objetivo = prefijo.trim().toLowerCase();
-  // Devuelve un array con TODAS las coincidencias (base + donaciones)
   return obtenerCatalogoParaEvento().filter((p) => p && p.name && p.name.trim().toLowerCase().startsWith(objetivo));
 }
 
 function construirOpcionesEvento() {
-  // flatMap aplanarás los sub-arrays devueltos por .filter()
   const perksEncontrados = EVENT_PERK_PREFIXES.flatMap(buscarPerkEvento).filter(Boolean);
   if (perksEncontrados.length === 0) return null;
 
   const opciones = [];
   perksEncontrados.forEach((perk) => {
-    // Ahora 'perk' es un objeto individual válido
     for (let i = 0; i < EVENT_COPIES_PER_PERK; i++) {
       opciones.push(perk);
     }
   });
 
   const mezcladas = mezclarSinAdyacentesIguales(opciones);
-  return mezcladas || opciones; // Retorna sin mezclar en caso de fallback para evitar undefined
+  return mezcladas || opciones;
 }
 
 function activarModoEvento() {
+ 
+  const el = getWheelElements();
   const opcionesEvento = construirOpcionesEvento();
   if (!opcionesEvento) return false;
 
   opcionesNormalesBackup = state.options;
   state.options = opcionesEvento;
   state.eventoActivo = true;
-  wheelWrap?.classList.add('evento-activo');
+  el?.wheelWrap?.classList.add('evento-activo');
+
+  notificarCambioModoEvento();
   dibujarRuleta();
-  dibujarOverlayEstatico();
   return true;
 }
 
-// Revierte el modo evento a la normalidad: restaura state.options,
-// apaga el flag y la clase CSS, y redibuja. Es un no-op si el evento
-// ya estaba apagado (así se puede llamar "por las dudas" sin chequear).
 function desactivarModoEvento() {
+  const el = getWheelElements();
   if (!state.eventoActivo) return;
   if (opcionesNormalesBackup) state.options = opcionesNormalesBackup;
   opcionesNormalesBackup = null;
   state.eventoActivo = false;
-  wheelWrap?.classList.remove('evento-activo');
+  el?.wheelWrap?.classList.remove('evento-activo');
+  notificarCambioModoEvento();
   dibujarRuleta();
-  dibujarOverlayEstatico();
 }
 
-// Cada giro nuevo (real o señuelo) arranca el conteo de ticks desde cero.
 function prepararVariablesDeSonido() {
   state.modoConstante = true;
   state.intervaloActual = MIN_TICK_GAP_MS;
@@ -309,28 +282,22 @@ function prepararVariablesDeSonido() {
   state.lastSoundOptionName = null;
 }
 
-// El giro "de verdad": misma física de siempre (15s, easeOut de
-// wheeldecide.com), termina en detenerGiro() y revela un ganador. Se usa
-// tanto para un giro normal como para el giro real del evento (una vez
-// que ya se hizo el swap de opciones/paleta).
 function ejecutarGiroReal() {
   prepararVariablesDeSonido();
 
   const spinAngleStart = Math.random() * 30 + 20;
-  const spinTimeTotal = 15000; // igual que wheeldecide.com (minTimeToSpin = 15)
+  const spinTimeTotal = 15000;
   let spinTime = 0;
 
   function rotarPaso() {
-    if (!state.spinning) return;
+    const el = getWheelElements();
+    if (!state.spinning || !el) return;
     spinTime += 30;
     if (spinTime >= spinTimeTotal) { detenerGiro(); return; }
 
-    // Misma fórmula exacta que usa wheeldecide.com para la velocidad de
-    // cada paso: spinAngleStart menos la posición ya recorrida según la
-    // curva cúbica de easeOut.
     const spinAngle = spinAngleStart - easeOut(spinTime, 0, spinAngleStart, spinTimeTotal);
     state.currentRotation += spinAngle;
-    canvas.style.transform = `rotate(${state.currentRotation}deg)`;
+    el.canvas.style.transform = `rotate(${state.currentRotation}deg)`;
 
     actualizarRomboSegunRotacion(state.currentRotation, spinTime);
     state.animationFrameId = setTimeout(rotarPaso, 30);
@@ -338,10 +305,6 @@ function ejecutarGiroReal() {
   state.animationFrameId = setTimeout(rotarPaso, 30);
 }
 
-// El giro "señuelo": misma mecánica de easeOut pero mucho más corto
-// (EVENTO_DECOY_DURATION_MS) y con la rueda todavía en modo normal —
-// no termina en un ganador, sino que llama a alTerminar() cuando la
-// rueda queda quieta, para encadenar el efecto de flash+glitch.
 function ejecutarGiroSenuelo(alTerminar) {
   prepararVariablesDeSonido();
 
@@ -350,13 +313,14 @@ function ejecutarGiroSenuelo(alTerminar) {
   let spinTime = 0;
 
   function rotarPaso() {
-    if (!state.spinning) return;
+    const el = getWheelElements();
+    if (!state.spinning || !el) return;
     spinTime += 30;
     if (spinTime >= spinTimeTotal) { alTerminar(); return; }
 
     const spinAngle = spinAngleStart - easeOut(spinTime, 0, spinAngleStart, spinTimeTotal);
     state.currentRotation += spinAngle;
-    canvas.style.transform = `rotate(${state.currentRotation}deg)`;
+    el.canvas.style.transform = `rotate(${state.currentRotation}deg)`;
 
     actualizarRomboSegunRotacion(state.currentRotation, spinTime);
     state.animationFrameId = setTimeout(rotarPaso, 30);
@@ -365,13 +329,15 @@ function ejecutarGiroSenuelo(alTerminar) {
 }
 
 export function iniciarGiro() {
-  if (state.spinning || state.options.length < 2) return;
+  const el = getWheelElements();
+  if (!el || state.spinning || state.options.length < 2) return;
+
   state.spinning = true;
-  winnerOverlay.classList.remove('active');
-  centerDiamondWrapper.classList.remove('hidden');
-  spinHint.classList.add('hidden');
-  wheelDarkOverlay.classList.add('hidden');
-  mysteryDiamondImg.classList.add('hidden');
+  el.winnerOverlay.classList.remove('active');
+  el.centerDiamondWrapper.classList.remove('hidden');
+  el.spinHint.classList.add('hidden');
+  el.wheelDarkOverlay.classList.add('hidden');
+  el.mysteryDiamondImg.classList.add('hidden');
 
   const esEvento = Math.random() < EVENT_CHANCE;
 
@@ -379,21 +345,16 @@ export function iniciarGiro() {
     ejecutarGiroReal();
     return;
   }
-
-  // Secuencia de evento: giro señuelo (normal) -> desacelera fluido hasta
-  // frenar del todo -> flash+glitch breve -> recién ahí swap a paleta/
-  // opciones de evento -> arranca el giro real de verdad.
+setTimeout(() => {
+  audios.shit.play().catch(() => {});
+}, 400);
   ejecutarGiroSenuelo(() => {
-    wheelWrap?.classList.add('evento-flash');
+    el.wheelWrap?.classList.add('evento-flash');
     setTimeout(() => {
-      wheelWrap?.classList.remove('evento-flash');
+      el.wheelWrap?.classList.remove('evento-flash');
 
-      // Si en el medio el usuario canceló el giro (click durante el
-      // señuelo o el flash), no forzamos el arranque del evento.
       if (!state.spinning) return;
 
-      // Si ninguno de los 4 perks fijos existe hoy en la base, seguimos
-      // en modo normal para no romper el giro.
       activarModoEvento();
       ejecutarGiroReal();
     }, EVENTO_GLITCH_DURATION_MS);
@@ -401,65 +362,68 @@ export function iniciarGiro() {
 }
 
 export function setupWheelEventListeners() {
-  winnerOverlay.addEventListener('click', () => {
-    winnerOverlay.classList.remove('active');
-    centerDiamondWrapper.classList.remove('hidden');
-    spinHint.classList.add('hidden');
-    wheelDarkOverlay.classList.add('hidden');
-    mysteryDiamondImg.classList.add('hidden');
+  const el = getWheelElements();
+  if (!el) return;
+
+  el.winnerOverlay.addEventListener('click', () => {
+    el.winnerOverlay.classList.remove('active');
+    el.centerDiamondWrapper.classList.remove('hidden');
+    el.spinHint.classList.add('hidden');
+    el.wheelDarkOverlay.classList.add('hidden');
+    el.mysteryDiamondImg.classList.add('hidden');
     desactivarModoEvento();
     iniciarGiro();
   });
 
-  const obtenerCentro = () => { const r = canvas.getBoundingClientRect(); return { x: r.left + r.width/2, y: r.top + r.height/2 }; };
+  const obtenerCentro = () => { const r = el.canvas.getBoundingClientRect(); return { x: r.left + r.width/2, y: r.top + r.height/2 }; };
   const obtenerAngulo = (x, y) => { const c = obtenerCentro(); return Math.atan2(y - c.y, x - c.x) * (180/Math.PI); };
 
-  canvas.addEventListener('pointerdown', (e) => {
+  el.canvas.addEventListener('pointerdown', (e) => {
     if (state.spinning) {
       state.spinning = false;
       if (state.animationFrameId) clearTimeout(state.animationFrameId);
       desactivarModoEvento();
-      spinHint.classList.remove('hidden');
-      wheelDarkOverlay.classList.remove('hidden');
-      mysteryDiamondImg.classList.remove('hidden');
+      el.spinHint.classList.remove('hidden');
+      el.wheelDarkOverlay.classList.remove('hidden');
+      el.mysteryDiamondImg.classList.remove('hidden');
       return;
     }
     if (state.options.length < 2) return;
     state.dragging = true;
     state.hasMoved = false;
-    winnerOverlay.classList.remove('active');
-    centerDiamondWrapper.classList.remove('hidden');
-    spinHint.classList.add('hidden');
-    wheelDarkOverlay.classList.add('hidden');
-    mysteryDiamondImg.classList.add('hidden');
-    canvas.setPointerCapture(e.pointerId);
+    el.winnerOverlay.classList.remove('active');
+    el.centerDiamondWrapper.classList.remove('hidden');
+    el.spinHint.classList.add('hidden');
+    el.wheelDarkOverlay.classList.add('hidden');
+    el.mysteryDiamondImg.classList.add('hidden');
+    el.canvas.setPointerCapture(e.pointerId);
     state.dragStartAngle = obtenerAngulo(e.clientX, e.clientY);
     state.dragStartRotation = state.currentRotation;
   });
 
-  canvas.addEventListener('pointermove', (e) => {
+  el.canvas.addEventListener('pointermove', (e) => {
     if (!state.dragging) return;
     const delta = obtenerAngulo(e.clientX, e.clientY) - state.dragStartAngle;
     if (Math.abs(delta) > 3) state.hasMoved = true;
     if (state.hasMoved) {
       state.currentRotation = state.dragStartRotation + delta;
-      canvas.style.transform = `rotate(${state.currentRotation}deg)`;
+      el.canvas.style.transform = `rotate(${state.currentRotation}deg)`;
       actualizarRomboSegunRotacion(state.currentRotation);
     }
   });
 
-  canvas.addEventListener('pointerup', () => {
+  el.canvas.addEventListener('pointerup', () => {
     if (!state.dragging) return;
     state.dragging = false;
     if (state.hasMoved) {
       state.spinning = false;
-      spinHint.classList.remove('hidden');
-      wheelDarkOverlay.classList.remove('hidden');
-      mysteryDiamondImg.classList.remove('hidden');
+      el.spinHint.classList.remove('hidden');
+      el.wheelDarkOverlay.classList.remove('hidden');
+      el.mysteryDiamondImg.classList.remove('hidden');
     } else {
       iniciarGiro();
     }
   });
 
-  window.addEventListener('resize', () => { dibujarRuleta(); dibujarOverlayEstatico(); });
+  window.addEventListener('resize', () => { dibujarRuleta(); });
 }
