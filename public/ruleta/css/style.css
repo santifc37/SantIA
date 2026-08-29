@@ -166,7 +166,7 @@ h1:empty {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(12, 10, 18, 0.95);
+  background-color: rgba(0, 0, 0, 0.719);
   backdrop-filter: blur(8px);
   display: flex;
   justify-content: center;
@@ -666,15 +666,15 @@ h1:empty {
 
 .donations-container {
   position: absolute;
-  top: 14px;
-  left: 23px;
+  top: -15px;
+  left: 10px;
   background: rgba(0, 0, 0, 0.6);
   border-radius: 8px;
   padding: 15px;
   color: #fff;
-  width: 614px;
+  width: 750px;
   max-width: 820px;
-  height: 200px;
+  height: 100px;
   max-height: 200px;
   display: flex;
   flex-direction: column;
@@ -688,6 +688,11 @@ h1:empty {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
+  margin-top: -12px;
+}
+.header-status h3 {
+  font-size: 14px;
+  margin: 0;
 }
 
 .donations-scroll {
@@ -695,19 +700,21 @@ h1:empty {
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
+  margin-top: -6px; 
 }
 
 #donationsList {
   list-style: none;
   padding: 0;
-  margin: 10px 0 0 0;
+  margin: 1px 0 0 0;
   position: relative;
   will-change: transform;
 }
 
 #donationsList li {
-  padding: 8px 0;
+  padding: 0px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 1px;
 }
 
 #donationsList li.empty {
